@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -35,12 +34,7 @@ class NeuralNetwork(LightningModule):
         return self.seq(x)
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
-        y_hat = self(x)
-        loss = F.cross_entropy(y_hat, y)
-        result = pl.TrainResult(loss, checkpoint_on=loss)
-        result.log('train_loss', loss, logger=True, on_epoch=True)
-        return result
+        return self._share_step(batch, 'train', log_acc=False)
 
     def validation_step(self, batch, batch_idx):
         return self._share_step(batch, 'val')
@@ -48,20 +42,18 @@ class NeuralNetwork(LightningModule):
     def test_step(self, batch, batch_idx):
         return self._share_step(batch, 'test')
 
-    def _share_step(self, batch, prefix):
+    def _share_step(self, batch, prefix, log_acc=True):
         x, y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
-
-        # Get prediction for each label
-        labels_hat = torch.argmax(y_hat, dim=1)
-        # Calculate accuracy: how many are correct divided by the number of tests
-        test_acc = torch.true_divide(torch.sum(y == labels_hat), len(x))
-
-        result = pl.EvalResult(checkpoint_on=loss)
-        result.log(f'{prefix}_loss', loss, logger=True, prog_bar=True, on_epoch=True)
-        result.log(f'{prefix}_acc', test_acc, logger=True, prog_bar=True, on_epoch=True)
-        return result
+        self.log(f'{prefix}_loss', loss, logger=True, prog_bar=True, on_epoch=True)
+        if log_acc:
+            # Get prediction for each label
+            labels_hat = torch.argmax(y_hat, dim=1)
+            # Calculate accuracy: how many are correct divided by the number of tests
+            test_acc = torch.true_divide(torch.sum(y == labels_hat), len(x))
+            self.log(f'{prefix}_acc', test_acc, logger=True, prog_bar=True, on_epoch=True)
+        return loss
 
     def configure_optimizers(self):
         optimizer = optim.SGD(self.parameters(), lr=self.hparams.learning_rate)

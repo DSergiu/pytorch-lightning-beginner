@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 
-import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -27,9 +26,8 @@ class LinearRegression(LightningModule):
         x, y = batch
         y_hat = self(x)
         loss = F.mse_loss(y_hat, y)
-        result = pl.TrainResult(loss, checkpoint_on=loss)
-        result.log('train_loss', loss, logger=True, on_epoch=True)
-        return result
+        self.log('train_loss', loss, logger=True, on_epoch=True)
+        return loss
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.hparams.learning_rate)

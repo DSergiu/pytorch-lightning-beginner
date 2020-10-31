@@ -1,5 +1,6 @@
 .idea
 venv
+venv-win
 datasets
 *.pth
 */lightning_logs

@@ -42,14 +42,7 @@ class ConvolutionalAutoEncoder(LightningModule):
         return x
 
     def training_step(self, batch, batch_idx):
-        x, _ = batch
-        # Pass image through model and get a similar image back
-        x_hat = self(x)
-        # Compare initial and generated images
-        loss = F.binary_cross_entropy(x_hat, x)
-        result = pl.TrainResult(loss, checkpoint_on=loss)
-        result.log('train_loss', loss, logger=True, on_epoch=True)
-        return result
+        return self._share_step(batch, 'train', prog_bar=False)
 
     def validation_step(self, batch, batch_idx):
         return self._share_step(batch, 'val')
@@ -57,15 +50,14 @@ class ConvolutionalAutoEncoder(LightningModule):
     def test_step(self, batch, batch_idx):
         return self._share_step(batch, 'test')
 
-    def _share_step(self, batch, prefix):
+    def _share_step(self, batch, prefix, prog_bar=True):
         x, _ = batch
         # Pass image through model and get a similar image back
         x_hat = self(x)
         # Compare initial and generated images
         loss = F.binary_cross_entropy(x_hat, x)
-        result = pl.EvalResult(checkpoint_on=loss)
-        result.log(f'{prefix}_loss', loss, logger=True, prog_bar=True, on_epoch=True)
-        return result
+        self.log(f'{prefix}_loss', loss, logger=True, prog_bar=prog_bar, on_epoch=True)
+        return loss
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
