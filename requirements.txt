@@ -1,7 +1,7 @@
 -f https://download.pytorch.org/whl/torch_stable.html
-pytorch-lightning==1.0.4
-matplotlib==3.3.2
-torch==1.7.0+cu110
-torchvision==0.8.1+cu110
-torchtext==0.8.0
+pytorch-lightning==1.8.3.post1
+torch==1.13.0+cu116
+torchvision==0.14.0+cu116
+matplotlib==3.6.2
 jupyter==1.0.0
+tensorboard==2.11.0
