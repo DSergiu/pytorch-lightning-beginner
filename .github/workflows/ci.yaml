@@ -1,0 +1,37 @@
+name: 'CI'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on: push
+
+jobs:
+  test:
+    name: 'Test'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - id: setup-python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.8'
+
+      - id: python-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            venv
+            datasets
+          key: pip-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
+
+      - name: 'Install dependencies'
+        if: steps.python-cache.outputs.cache-hit != 'true'
+        run: |
+          if [ -d "venv" ]; then rm -rf venv; fi
+          python3 -m venv venv
+          venv/bin/python3 -m pip install -r requirements.txt
+
+      - name: 'Test'
+        run: venv/bin/python3 -m pytest

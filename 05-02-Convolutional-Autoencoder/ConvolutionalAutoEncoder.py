@@ -1,25 +1,18 @@
-from argparse import ArgumentParser
+import sys
 
-import pytorch_lightning as pl
+sys.path.append('../src')
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from BaseLightningModule import BaseLightningModule
 from pytorch_lightning import Trainer
-from pytorch_lightning.core import LightningModule
 from torch import optim
-from torch.utils.data import DataLoader
-from torchvision import datasets, transforms
 
 
-class ConvolutionalAutoEncoder(LightningModule):
-    def __init__(self,
-                 data_root: str = '../datasets',
-                 batch_size: int = 64,
-                 learning_rate: float = 0.01,
-                 **kwargs
-                 ):
+class ConvolutionalAutoEncoder(BaseLightningModule):
+    def __init__(self, **kwargs):
         super().__init__()
-        self.save_hyperparameters()
         self.encoder = nn.Sequential(
             nn.Conv2d(1, 16, kernel_size=3, padding=1),
             nn.ReLU(True),
@@ -34,66 +27,37 @@ class ConvolutionalAutoEncoder(LightningModule):
             nn.ConvTranspose2d(16, 1, kernel_size=2, stride=2),
             nn.Sigmoid()
         )
-        self.example_input_array = torch.rand(batch_size, 1, 28, 28)
+        self.example_input_array = torch.rand(self.hparams.batch_size, 1, 28, 28)
 
     def forward(self, x):
         x = self.encoder(x)
         x = self.decoder(x)
         return x
 
-    def training_step(self, batch, batch_idx):
-        return self._share_step(batch, 'train', prog_bar=False)
-
-    def validation_step(self, batch, batch_idx):
-        return self._share_step(batch, 'val')
-
-    def test_step(self, batch, batch_idx):
-        return self._share_step(batch, 'test')
-
-    def _share_step(self, batch, prefix, prog_bar=True):
+    def _share_step(self, batch, prefix, log_acc=True):
         x, _ = batch
         # Pass image through model and get a similar image back
         x_hat = self(x)
         # Compare initial and generated images
         loss = F.binary_cross_entropy(x_hat, x)
-        self.log(f'{prefix}_loss', loss, logger=True, prog_bar=prog_bar, on_epoch=True)
+        self.log(f'{prefix}_loss', loss, logger=True, prog_bar=True, on_epoch=True)
         return loss
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
-        return [optimizer]
-
-    def prepare_data(self):
-        datasets.MNIST(self.hparams.data_root, train=True, download=True)
-        datasets.MNIST(self.hparams.data_root, train=False, download=True)
-
-    def setup(self, stage):
-        transform = transforms.Compose([transforms.ToTensor()])
-        train = datasets.MNIST(self.hparams.data_root, train=True, download=False, transform=transform)
-        self.mnist_train, self.mnist_val = torch.utils.data.random_split(train, [50000, 10000])
-        self.mnist_test = datasets.MNIST(self.hparams.data_root, train=False, download=False, transform=transform)
-
-    def train_dataloader(self):
-        return DataLoader(self.mnist_train, batch_size=self.hparams.batch_size, num_workers=4, shuffle=True)
-
-    def val_dataloader(self):
-        return DataLoader(self.mnist_val, batch_size=self.hparams.batch_size, num_workers=4)
-
-    def test_dataloader(self):
-        return DataLoader(self.mnist_test, batch_size=self.hparams.batch_size, num_workers=4)
+        return optimizer
 
 
 def main(args):
     model = ConvolutionalAutoEncoder(**vars(args))
     trainer = Trainer.from_argparse_args(args)
     trainer.fit(model)
-
-    # Manually call test which runs the test loop and logs accuracy and loss
-    trainer.test()
+    trainer.test(model)
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
+    parser = ConvolutionalAutoEncoder.add_model_specific_args()
     parser = Trainer.add_argparse_args(parser)
+    parser.set_defaults(accelerator='gpu', devices=1, check_val_every_n_epoch=5, learning_rate=0.001)
     args = parser.parse_args()
     main(args)
