@@ -1,12 +1,12 @@
 import sys
 
-sys.path.append('..')
+sys.path.append('../src')
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from argparse import ArgumentParser
-from src.BaseLightningModule import BaseLightningModule
+from BaseLightningModule import BaseLightningModule
 from pytorch_lightning import Trainer
 from torch import optim
 from torch.utils.data import DataLoader

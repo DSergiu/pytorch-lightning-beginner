@@ -21,7 +21,9 @@ jobs:
       - id: python-cache
         uses: actions/cache@v3
         with:
-          path: venv
+          path: |
+            venv
+            datasets
           key: pip-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('requirements.txt') }}
 
       - name: 'Install dependencies'
@@ -30,3 +32,6 @@ jobs:
           if [ -d "venv" ]; then rm -rf venv; fi
           python3 -m venv venv
           venv/bin/python3 -m pip install -r requirements.txt
+
+      - name: 'Test'
+        run: venv/bin/python3 -m pytest
